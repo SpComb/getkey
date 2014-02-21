@@ -62,7 +62,7 @@ def put_key (keyring, key_name, secret) :
 
 def main (argv) :
     parser = argparse.ArgumentParser()
-    parser.add_argument('--keyring', metavar='KEYRING',
+    parser.add_argument('-k', '--keyring', metavar='KEYRING',
             help="Name of keyring to find")
     parser.add_argument('-L', '--list-keyrings', action='store_true',
             help="List names of keyrings")
