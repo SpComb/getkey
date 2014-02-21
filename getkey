@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import getpass
 import gnomekeyring as gk
 import random
 import string
@@ -28,6 +29,19 @@ def generate_key (length=16) :
     chars = string.letters + string.digits
 
     return ''.join(random.choice(chars) for i in xrange(length))
+
+def test_locked (keyring) :
+     return gk.get_info_sync(keyring).get_is_locked()
+
+def unlock_keyring (keyring) :
+    while True :
+        try :
+            secret = getpass.getpass("Password for keyring %s: " % (keyring, ))
+            gk.unlock_sync(keyring, secret)
+        except gk.IOError as ex :
+            print >>sys.stderr, "Failed to unlock %s: %s" % (keyring, ex)
+        else :
+            return
 
 def list_keys (keyring) :
     try :
@@ -66,6 +80,8 @@ def main (argv) :
             help="Name of keyring to find")
     parser.add_argument('-L', '--list-keyrings', action='store_true',
             help="List names of keyrings")
+    parser.add_argument('-U', '--unlock', action='store_true',
+            help="Unlock keyring if required")
     parser.add_argument('-l', '--list', action='store_true',
             help="List names of keys")
     parser.add_argument('-s', '--selection', action='store_true',
@@ -83,6 +99,9 @@ def main (argv) :
         if options.list_keyrings :
             for keyring in gk.list_keyring_names_sync() :
                 print keyring
+
+        if options.unlock and test_locked(options.keyring) :
+            unlock_keyring(options.keyring)
 
         if options.list :
             for key in list_keys(options.keyring) :
