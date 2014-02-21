@@ -3,7 +3,7 @@
 require("awful")
 
 GETKEY = "getkey"
-GETKEY_KEYRING = "kapsi"
+GETKEY_KEYRING = "login"
 
 return function ()
     awful.prompt.run({ prompt = "Keyring[" .. GETKEY_KEYRING .. "]: " },
