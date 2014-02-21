@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+
+import argparse
+import gnomekeyring as gk
+import subprocess
+
+XSEL = 'xsel'
+
+def invoke (cmd, *args) :
+    def _invoke (stdin=None) :
+        p = subprocess.Popen((cmd, ) + args, stdin=subprocess.PIPE)
+        stdout, stderr = p.communicate(input=stdin)
+
+        if stderr :
+            print stderr
+
+        return stdout
+    
+    return _invoke
+
+def list_keys (keyring) :
+    for key_id in gk.list_item_ids_sync(keyring) :
+        key = gk.item_get_info_sync(keyring, key_id)
+
+        print key.get_display_name()
+
+def get_key (keyring, key_name) :
+    for key_id in gk.list_item_ids_sync(keyring) :
+        key = gk.item_get_info_sync(keyring, key_id)
+
+        if key.get_display_name() == key_name :
+            return key.get_secret()
+
+def put_selection (options, text) :
+    invoke(XSEL, '-pi')(text)
+
+def main (argv) :
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--keyring', metavar='KEYRING',
+            help="Name of keyring to find")
+    parser.add_argument('-l', '--list', action='store_true',
+            help="List names of keys")
+    parser.add_argument('-s', '--selection', action='store_true',
+            help="Store to selection")
+    parser.add_argument('key', nargs='*',
+            help="Name of key")
+
+    options = parser.parse_args(argv[1:])
+
+    if options.list :
+        list_keys(options.keyring)
+    
+    for key in options.key :
+        secret = get_key(options.keyring, key)
+
+        if options.selection :
+            put_selection(options, secret)
+        else:
+            print secret
+
+if __name__ == '__main__' :
+    import sys
+    sys.exit(main(sys.argv))
