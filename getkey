@@ -105,7 +105,7 @@ def main (argv) :
         if options.unlock and test_locked(options.keyring) :
             unlock_keyring(options.keyring)
 
-        if options.list or options.completion :
+        if options.list or options.completion is not None :
             for key in list_keys(options.keyring) :
                 key_name = key.get_display_name()
 
