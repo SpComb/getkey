@@ -1,6 +1,11 @@
 # gnome-keyring-getkey
 Hacked-together command-line gnome-keyring client, with awesome integration.
 
+### Dependencies (APT)
+
+* `python-gnomekeyring`
+* `xsel`
+
 ## getkey
 Python command-line client using `python-gnomekeyring`
 
