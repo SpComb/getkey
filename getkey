@@ -5,8 +5,12 @@ import gnomekeyring as gk
 import random
 import string
 import subprocess
+import sys
 
 XSEL = 'xsel'
+
+class Error (Exception) :
+    pass
 
 def invoke (cmd, *args) :
     def _invoke (stdin=None) :
@@ -26,26 +30,27 @@ def generate_key (length=16) :
     return ''.join(random.choice(chars) for i in xrange(length))
 
 def list_keys (keyring) :
-    for key_id in gk.list_item_ids_sync(keyring) :
-        key = gk.item_get_info_sync(keyring, key_id)
+    try :
+        keys = gk.list_item_ids_sync(keyring)
+    except gk.Error as ex :
+        raise Error("%s: %s: %s" % (keyring, ex.__class__.__name__, ex))
 
-        print key.get_display_name()
+    for key_id in keys :
+        key = gk.item_get_info_sync(keyring, key_id)
+        
+        yield key
 
 def get_key (keyring, key_name) :
-    for key_id in gk.list_item_ids_sync(keyring) :
-        key = gk.item_get_info_sync(keyring, key_id)
-
+    for key in list_keys(keyring) :
         if key.get_display_name() == key_name :
             return key.get_secret()
 
 def put_selection (options, text) :
     invoke(XSEL, '-pi')(text)
 
-KEY_TYPE = 0
-
 def put_key (keyring, key_name, secret) :
     gk.item_create_sync(keyring, 
-            type                = KEY_TYPE,
+            type                = gk.ITEM_GENERIC_SECRET,
             display_name        = key_name, 
             attributes          = { },
             secret              = secret,
@@ -69,21 +74,30 @@ def main (argv) :
 
     options = parser.parse_args(argv[1:])
 
-    if options.list :
-        list_keys(options.keyring)
-    
-    for key in options.key :
-        if options.generate :
-            secret = generate_key(options.generate_length)
-            put_key(options.keyring, key, secret)
-        else :
-            secret = get_key(options.keyring, key)
+    try :
+        if options.list :
+            for key in list_keys(options.keyring) :
+                print key.get_display_name()
+        
+        for key in options.key :
+            if options.generate :
+                secret = generate_key(options.generate_length)
+                put_key(options.keyring, key, secret)
+            else :
+                secret = get_key(options.keyring, key)
 
-        if options.selection :
-            put_selection(options, secret)
-        else :
-            print secret
+            if options.selection :
+                put_selection(options, secret)
+            else :
+                print secret
+        
+
+    except Error as ex :
+        print >>sys.stderr, "Error:", ex
+        return 1
+
+    else :
+        return 0
 
 if __name__ == '__main__' :
-    import sys
     sys.exit(main(sys.argv))
