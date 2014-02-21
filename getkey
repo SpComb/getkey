@@ -84,6 +84,8 @@ def main (argv) :
             help="Unlock keyring if required")
     parser.add_argument('-l', '--list', action='store_true',
             help="List names of keys")
+    parser.add_argument('-C', '--completion',
+            help="List prefix-matching keys")
     parser.add_argument('-s', '--selection', action='store_true',
             help="Store to selection")
     parser.add_argument('-g', '--generate', action='store_true',
@@ -103,9 +105,14 @@ def main (argv) :
         if options.unlock and test_locked(options.keyring) :
             unlock_keyring(options.keyring)
 
-        if options.list :
+        if options.list or options.completion :
             for key in list_keys(options.keyring) :
-                print key.get_display_name()
+                key_name = key.get_display_name()
+
+                if options.completion and not key_name.startswith(options.completion) :
+                    continue
+
+                print key_name
         
         for key in options.key :
             if options.generate :
