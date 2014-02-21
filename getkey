@@ -36,7 +36,10 @@ def list_keys (keyring) :
         raise Error("%s: %s: %s" % (keyring, ex.__class__.__name__, ex))
 
     for key_id in keys :
-        key = gk.item_get_info_sync(keyring, key_id)
+        try :
+            key = gk.item_get_info_sync(keyring, key_id)
+        except gk.Error as ex :
+            raise Error("%s[%s]: %s: %s" % (keyring, key_id, ex.__class__.__name__, ex))
         
         yield key
 
@@ -61,6 +64,8 @@ def main (argv) :
     parser = argparse.ArgumentParser()
     parser.add_argument('--keyring', metavar='KEYRING',
             help="Name of keyring to find")
+    parser.add_argument('-L', '--list-keyrings', action='store_true',
+            help="List names of keyrings")
     parser.add_argument('-l', '--list', action='store_true',
             help="List names of keys")
     parser.add_argument('-s', '--selection', action='store_true',
@@ -75,6 +80,10 @@ def main (argv) :
     options = parser.parse_args(argv[1:])
 
     try :
+        if options.list_keyrings :
+            for keyring in gk.list_keyring_names_sync() :
+                print keyring
+
         if options.list :
             for key in list_keys(options.keyring) :
                 print key.get_display_name()
