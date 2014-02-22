@@ -61,7 +61,7 @@ Bind to a key in your `~/.config/awesome/rc.lua` using e.g.
     globalkeys = awful.util.table.join(
         ...
 
-        awful.key({ modkey}, "e",                  dofile("/home/terom/.config/awesome/getkey.lua")),
+        awful.key({ modkey}, "e",                  dofile("/home/terom/dev/getkey/awesome-getkey-prompt.lua")),
         
         ...
     )

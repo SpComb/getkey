@@ -1,4 +1,4 @@
--- awful.key({ modkey}, "e",                  dofile("/home/terom/.config/awesome/getkey.lua"))
+-- awful.key({ modkey}, "e",                  dofile("/home/terom/dev/getkey/awesome-getkey-prompt.lua"))
 --
 require("awful")
 
