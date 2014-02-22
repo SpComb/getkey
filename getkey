@@ -33,10 +33,21 @@ def generate_key (length=16) :
 def test_locked (keyring) :
      return gk.get_info_sync(keyring).get_is_locked()
 
+def prompt (prompt) :
+    if sys.stdin.isatty() :
+        return getpass.getpass(prompt)
+    else :
+        for line in sys.stdin :
+            return line
+
 def unlock_keyring (keyring) :
     while True :
         try :
-            secret = getpass.getpass("Password for keyring %s: " % (keyring, ))
+            secret = prompt("Password for keyring %s: " % (keyring, ))
+
+            if not secret :
+                return
+
             gk.unlock_sync(keyring, secret)
         except gk.IOError as ex :
             print >>sys.stderr, "Failed to unlock %s: %s" % (keyring, ex)
