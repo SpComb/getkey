@@ -21,7 +21,8 @@ return function ()
             end
 
             return awful.completion.generic(text, cur_pos, ncomp, tokens)
-        end
+        end,
+        awful.util.getdir("cache") .. "/getkey_" .. GETKEY_KEYRING
     )
 end
 
