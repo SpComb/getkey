@@ -38,7 +38,7 @@ def prompt (prompt) :
         return getpass.getpass(prompt)
     else :
         for line in sys.stdin :
-            return line
+            return line.rstrip('\n')
 
 def unlock_keyring (keyring) :
     while True :
