@@ -7,6 +7,7 @@
 --
 
 local awful = require("awful")
+local naughty = require("naughty")
 
 GETKEY = "getkey"
 GETKEY_KEYRING = "login"
@@ -14,18 +15,28 @@ GETKEY_KEYRING = "login"
 local function splitlines(str)
 	local t = {}
 	for line in string.gmatch(str, "%C+") do
-		table.insert(t, line)
+        if string.len(line) ~= 0 then
+            table.insert(t, line)
+        end
 	end
 	return t
 end
 
+local function listkeyrings()
+    return splitlines(awful.util.pread("getkey --list-keyrings"))
+end
+
+local function listkeys(ring)
+    return splitlines(awful.util.pread("getkey --keyring='" .. ring .. "' --list"))
+end
+
 local function unlock(ring)
-	awful.util.spawn_with_shell("zenity --password | getkey -k'" .. ring .. "' -U")
+	awful.util.spawn_with_shell("zenity --password | getkey --keyring='" .. ring .. "' -U")
 end
 
 local function getkey(ring, key)
-	awful.util.pread("getkey -k'" .. ring .. "' -s " .. key)
-	naughty.notify({ text="Key added to clipboard"})
+	awful.util.pread("getkey --keyring='" .. ring .. "' -s " .. key)
+	naughty.notify({ text="Key added to clipboard: " .. key})
 end
 
 return {
@@ -50,25 +61,26 @@ return {
         )
     end,
     menu = function ()
-        local rings = awful.util.pread("getkey --list-keyrings")
         local keyrings = {}
-        for a, ring in pairs(splitlines(rings)) do
+
+        for a, ring in pairs(listkeyrings()) do
             if string.len(ring) ~= 0 and ring ~= "session" then
-                local keys = awful.util.pread("getkey -k " .. ring .. " --list")
-                if string.len(keys) == 0 then
+                local options = {}
+                local empty = true
+
+                for i, key in ipairs(listkeys(ring)) do
+                    options[i] = {key, function () getkey(ring, key) end}
+                    empty = false
+                end
+
+                if empty then
                     keyrings[a] = {ring, function() unlock(ring) end }
                 else
-                    local options = {}
-                    for k, key in ipairs(splitlines(keys)) do
-                        if string.len(key) ~= 0 then
-                            options[k] = {key, function () getkey(ring, key) end}
-                        end
-                    end
                     keyrings[a] = {ring, options}
                 end
             end
         end
-        local keyringsMenu = awful.menu({ items = keyrings })
-        keyringsMenu:show()
+
+        awful.menu({ items = keyrings }):show()
     end,
 }
