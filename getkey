@@ -69,20 +69,35 @@ def list_keys (keyring) :
         yield key
 
 def get_key (keyring, key_name) :
+    """
+        Return secret for matching key.
+
+        Returns None if not found.
+    """
     for key in list_keys(keyring) :
         if key.get_display_name() == key_name :
             return key.get_secret()
+    else:
+        return None
 
 def put_selection (options, text) :
     invoke(XSEL, '-pi')(text)
 
-def put_key (keyring, key_name, secret) :
+def put_key (keyring, key_name, secret, update=False) :
+    exists = bool(get_key(keyring, key_name))
+
+    if exists and not update:
+        raise Error("%s: key already exists: %s" % (keyring, key_name))
+
+    if update and not exists:
+        raise Error("%s: key does not exist: %s" % (keyring, key_name))
+
     gk.item_create_sync(keyring, 
             type                = gk.ITEM_GENERIC_SECRET,
             display_name        = key_name, 
             attributes          = { },
             secret              = secret,
-            update_if_exists    = 0,
+            update_if_exists    = True,
     )
 
 def main (argv) :
@@ -103,6 +118,8 @@ def main (argv) :
             help="Generate new key")
     parser.add_argument('--generate-length', type=int, default=16,
             help="Generate key length")
+    parser.add_argument('-u', '--update', action='store_true',
+            help="Regenerate existing key")
     parser.add_argument('key', nargs='*',
             help="Name of key")
 
@@ -126,9 +143,11 @@ def main (argv) :
                 print key_name
         
         for key in options.key :
-            if options.generate :
+            if options.generate or options.update :
                 secret = generate_key(options.generate_length)
-                put_key(options.keyring, key, secret)
+                put_key(options.keyring, key, secret,
+                        update  = options.update,
+                )
             else :
                 secret = get_key(options.keyring, key)
 
