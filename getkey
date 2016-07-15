@@ -39,6 +39,9 @@ GENERATE_ALPHABET = string.ascii_letters + string.digits
 def generate (length=GENERATE_LENGTH, random=GENERATE_RANDOM, alphabet=GENERATE_ALPHABET) :
     return ''.join(random.choice(alphabet) for i in range(length))
 
+class Error(Exception):
+    pass
+
 def run(bus, args):
     # collections
     if args.list_keyrings:
@@ -52,7 +55,11 @@ def run(bus, args):
     # collection
     if args.keyring:
         path = os.path.join('/org/freedesktop/secrets/collection', args.keyring)
-        collection = secretstorage.Collection(bus, path)
+
+        try:
+            collection = secretstorage.Collection(bus, path)
+        except secretstorage.ItemNotFoundException:
+            raise Error("Keyring not found: " + args.keyring)
     else:
         collection = secretstorage.get_default_collection(bus)
 
@@ -88,7 +95,7 @@ def run(bus, args):
         elif item:
             secret = item.get_secret().decode('utf-8')
         else:
-            raise secretstorage.ItemNotFoundException(args.key)
+            raise Error("Key not found: " + args.key)
         
         # modify
         if args.update:
@@ -97,7 +104,7 @@ def run(bus, args):
         elif args.generate:
             # create new, do not create a second copy or replace existing
             if item:
-                raise secretstorage.SecretStorageException("Item already exists")
+                raise Error("Key already exists: " + args.key)
 
             item = collection.create_item(args.key, {}, secret)
 
@@ -140,7 +147,7 @@ def main(argv):
 
         run(bus, args)
 
-    except secretstorage.SecretStorageException as error:
+    except Error as error:
         print(error, file=sys.stderr)
         return 2
 
