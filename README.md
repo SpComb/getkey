@@ -1,6 +1,6 @@
 # getkey
 
-Command-line [https://specifications.freedesktop.org/secret-service/](Freedesktop.org Secret Service) client.
+Command-line [Freedesktop.org Secret Service](https://specifications.freedesktop.org/secret-service/) client.
 
 Tested against gnome-keyring.
 
@@ -10,9 +10,9 @@ Tested against gnome-keyring.
 * `xclip`
 
 ## `getkey`
-Python command-line client using https://github.com/mitya57/secretstorage
+Python command-line client using [secretstorage](https://github.com/mitya57/secretstorage)
 
-List available keyrings from the local gnome-keyring-daemon:
+List available keyrings:
 
     $ getkey --list-keyrings
     login
@@ -51,9 +51,9 @@ Output keynames for tab-completion:
     random1
 
 ## awesome `getkey.lua`
-Simple awful.widgets.prompt -based integration.
+Support for Awesome using either `awful.prompt` with tab-completion or an interactive `awful.menu`.
 
-Customize the keyring to use:
+Customize the keyring to use for the prompt:
 
     GETKEY_KEYRING = "foobar"
 
