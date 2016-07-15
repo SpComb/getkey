@@ -1,13 +1,15 @@
-# gnome-keyring-getkey
+# getkey
 
-Hacked-together command-line gnome-keyring client, with awesome integration.
+Command-line [https://specifications.freedesktop.org/secret-service/](Freedesktop.org Secret Service) client.
+
+Tested against gnome-keyring.
 
 ### APT Depends:
 
 * `python3-secretstorage`
 * `xclip`
 
-## getkey
+## `getkey`
 Python command-line client using https://github.com/mitya57/secretstorage
 
 List available keyrings from the local gnome-keyring-daemon:
@@ -67,3 +69,10 @@ Bind to a key in your `~/.config/awesome/rc.lua` using:
 
         ...
     )
+
+## i3 `dmenu_getkey`
+
+Trivial wrapper around `dmenu` and getkey, for use with i3.
+
+    bindsym $mod+e exec --no-startup-id "dmenu_getkey"
+
