@@ -1,14 +1,14 @@
 # gnome-keyring-getkey
+
 Hacked-together command-line gnome-keyring client, with awesome integration.
 
-### Dependencies (APT)
+### APT Depends:
 
-* `python-gnomekeyring`
-* `xsel`
+* `python3-secretstorage`
+* `xclip`
 
 ## getkey
-Python command-line client using `python-gnomekeyring`
-
+Python command-line client using https://github.com/mitya57/secretstorage
 
 List available keyrings from the local gnome-keyring-daemon:
 
@@ -42,28 +42,28 @@ Generate and store a new key, using `--generate-length` random alnum chars:
 
 Output keynames for tab-completion:
 
-    $ getkey --keyring foobar --completion=
+    $ getkey --keyring foobar --list
     random1
     pw3
-    $ getkey --keyring foobar --completion=ra
+    $ getkey --keyring foobar --list ra*
     random1
 
-## awesome-getkey.lua
+## awesome `getkey.lua`
 Simple awful.widgets.prompt -based integration.
 
 Customize the keyring to use:
 
     GETKEY_KEYRING = "foobar"
 
-Bind to a key in your `~/.config/awesome/rc.lua` using e.g.
+Bind to a key in your `~/.config/awesome/rc.lua` using:
 
+    local getkey = require("getkey")
 
     globalkeys = awful.util.table.join(
         ...
 
-        awful.key({ modkey}, "e",                  dofile("/home/terom/dev/getkey/awesome-getkey-prompt.lua")),
-        
+        awful.key({ modkey },            "e",     function () getkey.prompt() end),
+        awful.key({ modkey, "Shift" },   "e",     function () getkey.menu() end),
+
         ...
     )
-
-XXX: very hacky and largely untested.

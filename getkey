@@ -1,167 +1,150 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
-import getpass
-import gnomekeyring as gk
+import fnmatch
+import os.path
 import random
+import secretstorage
 import string
 import subprocess
 import sys
 
-XSEL = 'xsel'
-
-class Error (Exception) :
-    pass
-
-def invoke (cmd, *args) :
-    def _invoke (stdin=None) :
-        p = subprocess.Popen((cmd, ) + args, stdin=subprocess.PIPE)
-        stdout, stderr = p.communicate(input=stdin)
-
-        if stderr :
-            print stderr
+def cmd(cmd, *args, **env):
+    """
+        Return a wrapper for executing a command with args and stdin/stdout
+    """
+    def _invoke (stdin=None):
+        p = subprocess.Popen((cmd, ) + args,
+                stdin   = subprocess.PIPE,
+                stdout  = subprocess.PIPE,
+                env     = env or None,
+        )
+        stdout, stderr = p.communicate(input=stdin.encode('utf-8'))
 
         return stdout
     
     return _invoke
 
-def generate_key (length=16) :
-    chars = string.letters + string.digits
-
-    return ''.join(random.choice(chars) for i in xrange(length))
-
-def test_locked (keyring) :
-     return gk.get_info_sync(keyring).get_is_locked()
-
-def prompt (prompt) :
-    if sys.stdin.isatty() :
-        return getpass.getpass(prompt)
-    else :
-        for line in sys.stdin :
-            return line.rstrip('\n')
-
-def unlock_keyring (keyring) :
-    while True :
-        try :
-            secret = prompt("Password for keyring %s: " % (keyring, ))
-
-            if not secret :
-                return
-
-            gk.unlock_sync(keyring, secret)
-        except gk.IOError as ex :
-            print >>sys.stderr, "Failed to unlock %s: %s" % (keyring, ex)
-        else :
-            return
-
-def list_keys (keyring) :
-    try :
-        keys = gk.list_item_ids_sync(keyring)
-    except gk.Error as ex :
-        raise Error("%s: %s: %s" % (keyring, ex.__class__.__name__, ex))
-
-    for key_id in keys :
-        try :
-            key = gk.item_get_info_sync(keyring, key_id)
-        except gk.Error as ex :
-            raise Error("%s[%s]: %s: %s" % (keyring, key_id, ex.__class__.__name__, ex))
-        
-        yield key
-
-def get_key (keyring, key_name) :
+def selection(text, selection='primary', loops=1):
     """
-        Return secret for matching key.
-
-        Returns None if not found.
+        Place given text into the selection, waiting until copied and then returning.
     """
-    for key in list_keys(keyring) :
-        if key.get_display_name() == key_name :
-            return key.get_secret()
+
+    cmd('xclip', '-selection', selection, '-loops', str(loops), '-quiet', '-in')(text)
+
+GENERATE_LENGTH = 16
+GENERATE_RANDOM = random.SystemRandom()
+GENERATE_ALPHABET = string.ascii_letters + string.digits
+
+def generate (length=GENERATE_LENGTH, random=GENERATE_RANDOM, alphabet=GENERATE_ALPHABET) :
+    return ''.join(random.choice(alphabet) for i in range(length))
+
+def run(bus, args):
+    # collections
+    if args.list_keyrings:
+        for collection in secretstorage.get_all_collections(bus):
+            dir, name = os.path.split(collection.collection_path)
+
+            assert dir == '/org/freedesktop/secrets/collection', "Invalid dir: " + dir
+
+            print(name)
+   
+    # collection
+    if args.keyring:
+        path = os.path.join('/org/freedesktop/secrets/collection', args.keyring)
+        collection = secretstorage.Collection(bus, path)
     else:
-        return None
+        collection = secretstorage.get_default_collection(bus)
 
-def put_selection (options, text) :
-    invoke(XSEL, '-pi')(text)
+    if args.unlock and collection.is_locked():
+        collection.unlock()
 
-def put_key (keyring, key_name, secret, update=False) :
-    exists = bool(get_key(keyring, key_name))
+    # items
+    if args.list:
+        for item in collection.get_all_items():
+            name = item.get_label()
 
-    if exists and not update:
-        raise Error("%s: key already exists: %s" % (keyring, key_name))
+            if args.key and not fnmatch.fnmatch(name, args.key):
+                continue
 
-    if update and not exists:
-        raise Error("%s: key does not exist: %s" % (keyring, key_name))
+            print(name)
+            
+            if args.verbose:
+                for key, value in item.get_attributes().items():
+                    print("", key, value)
 
-    gk.item_create_sync(keyring, 
-            type                = gk.ITEM_GENERIC_SECRET,
-            display_name        = key_name, 
-            attributes          = { },
-            secret              = secret,
-            update_if_exists    = True,
-    )
+    elif args.key:
+        for item in collection.get_all_items():
+            if item.get_label() == args.key:
+                break
+        else:
+            item = None
 
-def main (argv) :
+        # secret
+        if args.generate:
+            secret = generate(
+                    length  = args.generate_length,
+            )
+        elif item:
+            secret = item.get_secret().decode('utf-8')
+        else:
+            raise secretstorage.ItemNotFoundException(args.key)
+        
+        # modify
+        if args.update:
+            item.set_secret(secret)
+
+        elif args.generate:
+            # create new, do not create a second copy or replace existing
+            if item:
+                raise secretstorage.SecretStorageException("Item already exists")
+
+            item = collection.create_item(args.key, {}, secret)
+
+        # output
+        if args.output:
+            print(secret)
+
+        if args.selection:
+            selection(secret)
+
+def main(argv):
     parser = argparse.ArgumentParser()
+    parser.add_argument('-L', '--list-keyrings', action='store_true',
+            help="List available keyrings")
     parser.add_argument('-k', '--keyring', metavar='KEYRING',
             help="Name of keyring to find")
-    parser.add_argument('-L', '--list-keyrings', action='store_true',
-            help="List names of keyrings")
     parser.add_argument('-U', '--unlock', action='store_true',
             help="Unlock keyring if required")
     parser.add_argument('-l', '--list', action='store_true',
-            help="List names of keys")
-    parser.add_argument('-C', '--completion',
-            help="List prefix-matching keys")
+            help="List key names, filtering by given pattern")
+    parser.add_argument('-v', '--verbose', action='store_true',
+            help="List attributes")
+    parser.add_argument('key', metavar='KEY', nargs='?',
+            help="Key name, or list filter")
+    parser.add_argument('-o', '--output', action='store_true',
+            help="Output secret")
     parser.add_argument('-s', '--selection', action='store_true',
-            help="Store to selection")
+            help="Select secret (copy into clipboard)")
     parser.add_argument('-g', '--generate', action='store_true',
             help="Generate new key")
-    parser.add_argument('--generate-length', type=int, default=16,
+    parser.add_argument('--generate-length', type=int, default=GENERATE_LENGTH,
             help="Generate key length")
     parser.add_argument('-u', '--update', action='store_true',
-            help="Regenerate existing key")
-    parser.add_argument('key', nargs='*',
-            help="Name of key")
+            help="Update existing key")
 
-    options = parser.parse_args(argv[1:])
+    args = parser.parse_args(argv[1:])
 
-    try :
-        if options.list_keyrings :
-            for keyring in gk.list_keyring_names_sync() :
-                print keyring
+    try:
+        bus = secretstorage.dbus_init()
 
-        if options.unlock and test_locked(options.keyring) :
-            unlock_keyring(options.keyring)
+        run(bus, args)
 
-        if options.list or options.completion is not None :
-            for key in list_keys(options.keyring) :
-                key_name = key.get_display_name()
+    except secretstorage.SecretStorageException as error:
+        print(error, file=sys.stderr)
+        return 2
 
-                if options.completion and not key_name.startswith(options.completion) :
-                    continue
-
-                print key_name
-        
-        for key in options.key :
-            if options.generate or options.update :
-                secret = generate_key(options.generate_length)
-                put_key(options.keyring, key, secret,
-                        update  = options.update,
-                )
-            else :
-                secret = get_key(options.keyring, key)
-
-            if options.selection :
-                put_selection(options, secret)
-            else :
-                print secret
-        
-
-    except Error as ex :
-        print >>sys.stderr, "Error:", ex
-        return 1
-
-    else :
+    else:
         return 0
 
 if __name__ == '__main__' :
