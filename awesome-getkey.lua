@@ -1,6 +1,6 @@
 -- Integration for awesome WM:
 --
---  local getkey = require("getkey")
+--  local getkey = require("awesome-getkey")
 -- 
 --  awful.key({ modkey },            "e",     function () getkey.prompt() end),
 --  awful.key({ modkey, "Shift" },   "e",     function () getkey.menu() end),

@@ -57,7 +57,7 @@ Customize the keyring to use:
 
 Bind to a key in your `~/.config/awesome/rc.lua` using:
 
-    local getkey = require("getkey")
+    local getkey = require("awesome-getkey")
 
     globalkeys = awful.util.table.join(
         ...
