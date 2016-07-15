@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# For use with i3:
+#   bindsym $mod+e exec --no-startup-id "dmenu_getkey"
+
+set -ue
+set -o pipefail
+
+GETKEY=~/.local/bin/getkey
+
+$GETKEY -l | dmenu | while read key; do
+    $GETKEY -s $key
+done
