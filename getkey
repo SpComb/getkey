@@ -2,12 +2,15 @@
 
 import argparse
 import fnmatch
+import logging
 import os.path
 import random
 import secretstorage
 import string
 import subprocess
 import sys
+
+log = logging.getLogger('getkey')
 
 def cmd(cmd, *args, **env):
     """
@@ -45,7 +48,81 @@ def generate (length=GENERATE_LENGTH, random=GENERATE_RANDOM, alphabet=GENERATE_
 class Error(Exception):
     pass
 
+class Cache:
+    def __init__(self, path):
+        self.path = path
+
+        self._last = None
+        self._list = self._load()
+
+    def _load (self):
+        cache = { }
+
+        try:
+            with open(self.path, 'r') as cache_file:
+                for i, line in enumerate(cache_file, 1):
+                    line = line.strip()
+
+                    cache[line] = i
+
+                    log.debug("Cache.load: %s", line)
+
+                    self._last = line
+
+        except FileNotFoundError:
+            pass
+
+        return cache
+
+    def list(self):
+        """
+            Returns a {name: i} dict mapping each item to a rising priority starting from 1 for the oldest item.
+
+            Returns an empty dict if the cache does not exist.
+        """
+
+        return self._list
+
+    def get(self, name):
+        """
+            Returns ascending int ordering for item. Unused items have an order of 0, and most recently used items have
+            the highest ordering.
+        """
+
+        return self._list.get(name, 0)
+  
+    def _getkey(self, item):
+        name, object = item
+
+        return self.get(name)
+
+    def sort(self, items):
+        """
+            Sort { name: object } into [(name, object)] ordered by cache.
+        """
+
+        return sorted(items.items(), key=self._getkey, reverse=True)
+
+    def put(self, name):
+        """
+            Write most recently used item to the cache.
+        """
+
+        if name == self._last:
+            # optimization to not store most recently used key again
+            return
+        
+        log.debug("Cache.put %s (last=%s)", name, self._last)
+
+        with open(self.path, 'a') as cache_file:
+            print(name, file=cache_file)
+
 def run(bus, args):
+    if args.list_cache:
+        cache = Cache(args.list_cache)
+    else:
+        cache = None
+
     # collections
     if args.list_keyrings:
         for collection in secretstorage.get_all_collections(bus):
@@ -75,13 +152,20 @@ def run(bus, args):
         items = secretstorage.search_items(bus, {})
 
     # items
+    items = {item.get_label(): item for item in items}
+
     if args.list:
-        for item in items:
+        # cache ordering?
+        if cache:
+            items_list = cache.sort(items)
+        else:
+            # unordered
+            items_list = items.items()
+
+        for name, item in items_list:
             if item.is_locked():
                 # XXX: print item id?
                 continue
-
-            name = item.get_label()
 
             if args.key and not fnmatch.fnmatch(name, args.key):
                 continue
@@ -93,11 +177,7 @@ def run(bus, args):
                     print("", key, value)
 
     elif args.key:
-        for item in items:
-            if item.get_label() == args.key:
-                break
-        else:
-            item = None
+        item = items.get(args.key)
 
         # secret
         if args.generate:
@@ -130,8 +210,17 @@ def run(bus, args):
         if args.selection or args.selection_primary:
             selection(secret, selection='primary')
 
+        # cache ordering?
+        if cache:
+            cache.put(item.get_label())
+
 def main(argv):
     parser = argparse.ArgumentParser()
+    parser.set_defaults(
+        logging_level   = logging.WARN,
+    )
+    parser.add_argument('--debug', action='store_const', dest='logging_level', const=logging.DEBUG,
+            help="List attributes")
     parser.add_argument('-L', '--list-keyrings', action='store_true',
             help="List available keyrings")
     parser.add_argument('-k', '--keyring', metavar='KEYRING',
@@ -140,6 +229,8 @@ def main(argv):
             help="Unlock keyring if required")
     parser.add_argument('-l', '--list', action='store_true',
             help="List key names, filtering by given pattern")
+    parser.add_argument('-C', '--list-cache', metavar='PATH',
+            help="Store cache of selected keys, to list most recently used keys first")
     parser.add_argument('-v', '--verbose', action='store_true',
             help="List attributes")
     parser.add_argument('key', metavar='KEY', nargs='?',
@@ -160,6 +251,10 @@ def main(argv):
             help="Update existing key")
 
     args = parser.parse_args(argv[1:])
+
+    logging.basicConfig(
+        level   = args.logging_level,
+    )
 
     try:
         bus = secretstorage.dbus_init()

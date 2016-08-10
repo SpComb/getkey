@@ -6,8 +6,16 @@
 set -ue
 set -o pipefail
 
+CACHE=${XDG_CACHE_HOME:-$HOME/.cache}/getkey
+
+[ -d $CACHE ] || install -m 0700 -d $CACHE
+
 GETKEY=~/.local/bin/getkey
 
-$GETKEY -l | dmenu | while read key; do
-    $GETKEY -s $key
+getkey() {
+    $GETKEY --list-cache=$CACHE/list-cache "$@"
+}
+
+getkey -l | dmenu | while read key; do
+    getkey -s $key
 done

@@ -50,6 +50,23 @@ Output keynames for tab-completion:
     $ getkey --keyring foobar --list ra*
     random1
 
+## `--list-cache`
+
+Use `getkey --list-cache=${XDG_CACHE_HOME:-$HOME/.cache}/getkey/list-cache` to order most recently used keys first in the `--list` output.
+
+    $ getkey -k session --list-cache ~/.cache/getkey/list-cache -l
+    test3
+    test2
+    test
+    $ getkey -k session --list-cache ~/.cache/getkey/list-cache test2 -o
+    DFlG5OMsOyiqH9Zi
+    $ getkey -k session --list-cache ~/.cache/getkey/list-cache -l
+    test2
+    test3
+    test
+    $ cat ~/.cache/getkey/list-cache
+    test2
+
 ## awesome `getkey.lua`
 Support for Awesome using either `awful.prompt` with tab-completion or an interactive `awful.menu`.
 
