@@ -2,6 +2,7 @@
 
 import argparse
 import fnmatch
+import getpass
 import logging
 import os.path
 import random
@@ -44,6 +45,9 @@ GENERATE_ALPHABET = string.ascii_letters + string.digits
 
 def generate (length=GENERATE_LENGTH, random=GENERATE_RANDOM, alphabet=GENERATE_ALPHABET) :
     return ''.join(random.choice(alphabet) for i in range(length))
+
+def prompt (prompt):
+    return getpass.getpass(prompt)
 
 class Error(Exception):
     pass
@@ -180,7 +184,10 @@ def run(bus, args):
         item = items.get(args.key)
 
         # secret
-        if args.generate:
+        if args.input_prompt:
+            secret = prompt("Secret for key " + args.key + ": ")
+
+        elif args.generate:
             secret = generate(
                     length  = args.generate_length,
             )
@@ -193,8 +200,8 @@ def run(bus, args):
         if args.update:
             item.set_secret(secret)
 
-        elif args.generate:
-            # create new, do not create a second copy or replace existing
+        elif args.input_prompt or args.generate:
+            # do not create a second copy
             if item:
                 raise Error("Key already exists: " + args.key)
 
@@ -249,6 +256,8 @@ def main(argv):
             help="Generate key length")
     parser.add_argument('-u', '--update', action='store_true',
             help="Update existing key")
+    parser.add_argument('-I', '--input-prompt', action='store_true',
+            help="Prompt for password to store")
 
     args = parser.parse_args(argv[1:])
 
