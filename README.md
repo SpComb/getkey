@@ -42,6 +42,10 @@ Generate and store a new key, using `--generate-length` random alnum chars:
 
     $ getkey --keyring foobar --generate pw4
 
+Generate and update a key, including special chars (when the normal generate password is rejected):
+   
+    $ getkey --generate --generate-special --update pwd -o
+
 Output keynames for tab-completion:
 
     $ getkey --keyring foobar --list

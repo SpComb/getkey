@@ -42,6 +42,7 @@ def selection(text, selection='primary', loops=None):
 GENERATE_LENGTH = 16
 GENERATE_RANDOM = random.SystemRandom()
 GENERATE_ALPHABET = string.ascii_letters + string.digits
+GENERATE_ALPHABET_SPECIAL = GENERATE_ALPHABET + string.punctuation
 
 def generate (length=GENERATE_LENGTH, random=GENERATE_RANDOM, alphabet=GENERATE_ALPHABET) :
     return ''.join(random.choice(alphabet) for i in range(length))
@@ -189,7 +190,8 @@ def run(bus, args):
 
         elif args.generate:
             secret = generate(
-                    length  = args.generate_length,
+                    length   = args.generate_length,
+                    alphabet = args.generate_alphabet,
             )
         elif item:
             secret = item.get_secret().decode('utf-8')
@@ -224,7 +226,8 @@ def run(bus, args):
 def main(argv):
     parser = argparse.ArgumentParser()
     parser.set_defaults(
-        logging_level   = logging.WARN,
+        logging_level       = logging.WARN,
+        generate_alphabet   = GENERATE_ALPHABET,
     )
     parser.add_argument('--debug', action='store_const', dest='logging_level', const=logging.DEBUG,
             help="List attributes")
@@ -252,6 +255,8 @@ def main(argv):
             help="Select secret (copy into clipboard+primary)")
     parser.add_argument('-g', '--generate', action='store_true',
             help="Generate new key")
+    parser.add_argument('--generate-special', action='store_const', dest='generate_alphabet', const=GENERATE_ALPHABET_SPECIAL,
+            help="Generate with special characters")
     parser.add_argument('--generate-length', type=int, default=GENERATE_LENGTH,
             help="Generate key length")
     parser.add_argument('-u', '--update', action='store_true',
