@@ -92,9 +92,9 @@ Bind to a key in your `~/.config/awesome/rc.lua` using:
         ...
     )
 
-## i3 `dmenu_getkey`
+## i3/sway `dmenu_getkey`
 
-Trivial wrapper around `dmenu` and getkey, for use with i3.
+Trivial wrapper around `dmenu` and getkey, for use with i3/sway
 
     bindsym $mod+e exec --no-startup-id "dmenu_getkey"
 
