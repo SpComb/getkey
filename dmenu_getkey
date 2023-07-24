@@ -10,12 +10,6 @@ CACHE=${XDG_CACHE_HOME:-$HOME/.cache}/getkey
 
 [ -d $CACHE ] || install -m 0700 -d $CACHE
 
-GETKEY=~/.local/bin/getkey
-
-getkey() {
-    $GETKEY --list-cache=$CACHE/list-cache "$@"
-}
-
-getkey -l | dmenu | while read key; do
+getkey --list-cache=$CACHE/list-cache -l | dmenu | while read key; do
     getkey -s $key
 done
