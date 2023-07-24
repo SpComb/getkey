@@ -4,6 +4,7 @@ import argparse
 import fnmatch
 import getpass
 import logging
+import os
 import os.path
 import random
 import secretstorage
@@ -12,6 +13,8 @@ import subprocess
 import sys
 
 log = logging.getLogger('getkey')
+
+WAYLAND = bool(os.getenv('WAYLAND_DISPLAY'))
 
 def cmd(cmd, *args, **env):
     """
@@ -29,15 +32,38 @@ def cmd(cmd, *args, **env):
     
     return _invoke
 
-def selection(text, selection='primary', loops=None):
+def selection(text, primary=None, once=None, wait=None):
     """
         Place given text into the selection, waiting until copied and then returning.
     """
 
-    if loops is None:
-        cmd('xclip', '-selection', selection, '-in', '-silent')(text, stdout=False)
+    if WAYLAND:
+        args = []
+
+        if primary:
+            args.append('--primary')
+
+        args.append('--trim-newline')
+
+        if once:
+            args.append('--paste-once')
+
+        if wait:
+            args.append('--foreground')
+
+        args.append('--type=TEXT')
+
+        cmd('wl-copy', *args)(text, stdout=False)
     else:
-        cmd('xclip', '-selection', selection, '-loops', str(loops), '-quiet', '-in')(text, stdout=False)
+        selection = 'clipboard'
+
+        if primary:
+            selection = 'primary'
+
+        if once is None:
+            cmd('xclip', '-selection', selection, '-in', '-silent')(text, stdout=False)
+        else:
+            cmd('xclip', '-selection', selection, '-loops', str(1), '-quiet', '-in')(text, stdout=False)
 
 GENERATE_LENGTH = 16
 GENERATE_RANDOM = random.SystemRandom()
@@ -214,10 +240,10 @@ def run(bus, args):
         if args.output:
             print(secret)
 
-        if args.selection or args.selection_clipboard:
-            selection(secret, selection='clipboard')
-        if args.selection or args.selection_primary:
-            selection(secret, selection='primary')
+        if args.selection:
+            selection(secret, once=args.selection_once, wait=args.selection_wait)
+        if args.selection and args.selection_primary:
+            selection(secret, primary=True, once=args.selection_once, wait=args.selection_wait)
 
         # cache ordering?
         if cache:
@@ -247,12 +273,14 @@ def main(argv):
             help="Key name, or list filter")
     parser.add_argument('-o', '--output', action='store_true',
             help="Output secret")
-    parser.add_argument('--selection-clipboard', action='store_true',
-            help="Select secret (copy into clipboard)")
     parser.add_argument('--selection-primary', action='store_true',
             help="Select secret (copy into primary)")
+    parser.add_argument('--selection-once', action='store_true',
+            help="Select secret once, then clear")
+    parser.add_argument('--selection-wait', action='store_true',
+            help="Select and wait for paste")
     parser.add_argument('-s', '--selection', action='store_true',
-            help="Select secret (copy into clipboard+primary)")
+            help="Select secret (copy into clipboard)")
     parser.add_argument('-g', '--generate', action='store_true',
             help="Generate new key")
     parser.add_argument('--generate-special', action='store_const', dest='generate_alphabet', const=GENERATE_ALPHABET_SPECIAL,

@@ -8,6 +8,7 @@ Tested against gnome-keyring.
 
 * `python3-secretstorage`
 * `xclip`
+* `wl-clipboard`
 
 ## `getkey`
 Python command-line client using [secretstorage](https://github.com/mitya57/secretstorage)
