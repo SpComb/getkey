@@ -242,9 +242,9 @@ def run(bus, args):
         if args.output:
             print(secret)
 
-        if args.selection:
+        if args.selection_clipboard:
             selection(secret, once=args.selection_once, wait=args.selection_wait)
-        if args.selection and args.selection_primary:
+        if args.selection_primary:
             selection(secret, primary=True, once=args.selection_once, wait=args.selection_wait)
 
         # cache ordering?
@@ -275,6 +275,8 @@ def main(argv):
             help="Key name, or list filter")
     parser.add_argument('-o', '--output', action='store_true',
             help="Output secret")
+    parser.add_argument('--selection-clipboard', action='store_true',
+            help="Select secret (copy into clipboard)")
     parser.add_argument('--selection-primary', action='store_true',
             help="Select secret (copy into primary)")
     parser.add_argument('--selection-once', action='store_true',
@@ -282,7 +284,7 @@ def main(argv):
     parser.add_argument('--selection-wait', action='store_true',
             help="Select and wait for paste")
     parser.add_argument('-s', '--selection', action='store_true',
-            help="Select secret (copy into clipboard)")
+            help="Select secret (copy into clipboard, once, wait)")
     parser.add_argument('-g', '--generate', action='store_true',
             help="Generate new key")
     parser.add_argument('--generate-special', action='store_const', dest='generate_alphabet', const=GENERATE_ALPHABET_SPECIAL,
@@ -299,6 +301,11 @@ def main(argv):
     logging.basicConfig(
         level   = args.logging_level,
     )
+
+    if args.selection:
+        args.selection_clipboard = True
+        args.selection_once = True
+        args.selection_wait = True
 
     try:
         bus = secretstorage.dbus_init()
