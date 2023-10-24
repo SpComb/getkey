@@ -150,6 +150,31 @@ class Cache:
         with open(self.path, 'a') as cache_file:
             print(name, file=cache_file)
 
+def collection_items(collection):
+    items = {}
+
+    for item in collection.search_items({}):
+        items[item.get_label()] = item
+
+    return items
+
+def all_items(bus):
+    default_collection = secretstorage.get_default_collection(bus)
+    collections = secretstorage.get_all_collections(bus)
+
+    # all items from all collections
+    items = {}
+
+    for collection in collections:
+        for item in collection.search_items({}):
+            items[item.get_label()] = item
+
+    # prioritize items from default collection
+    for item in default_collection.search_items({}):
+        items[item.get_label()] = item
+
+    return items
+
 def run(bus, args):
     if args.list_cache:
         cache = Cache(args.list_cache)
@@ -177,15 +202,9 @@ def run(bus, args):
         if args.unlock and collection.is_locked():
             collection.unlock()
 
-        items = collection.search_items({})
+        items = collection_items(collection)
     else:
-        collection = secretstorage.get_default_collection(bus)
-
-        # all items from all collections
-        items = secretstorage.search_items(bus, {})
-
-    # items
-    items = {item.get_label(): item for item in items}
+        items = all_items(bus)
 
     if args.list:
         # cache ordering?
