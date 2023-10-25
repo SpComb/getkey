@@ -204,6 +204,8 @@ def run(bus, args):
 
         items = collection_items(collection)
     else:
+        collection = secretstorage.get_default_collection(bus)
+
         items = all_items(bus)
 
     if args.list:
